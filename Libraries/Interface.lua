@@ -1,3 +1,5 @@
+-- /// Credits to the rightful owner
+
 if getgenv().Library then
 	getgenv().Library:Unload()
 end
