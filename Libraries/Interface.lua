@@ -1,5 +1,3 @@
--- /// Credits to the rightful owner
-
 if getgenv().Library then
 	getgenv().Library:Unload()
 end
@@ -4984,3 +4982,4 @@ do
 end
 
 getgenv().Library = Library
+return getgenv().Library
