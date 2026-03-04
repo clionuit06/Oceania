@@ -672,7 +672,7 @@ do
 
 		CustomFont:New("Verdana", 400, "Regular", {
 			Id = "Verdana",
-			Url = "https://raw.githubusercontent.com/clionuit06/Viserys/main/Assets/Verdana.ttf",
+			Url = "https://raw.githubusercontent.com/clionuit06/Oceania/main/Libraries/Verdana.ttf",
 		})
 
 		Library.Font = CustomFont:Get("Verdana")
