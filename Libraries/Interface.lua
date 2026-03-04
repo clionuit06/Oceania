@@ -4966,13 +4966,22 @@ do
 
 			local ThemingSection = SettingsPage:Section({ Name = "Theming", Side = 2 })
 			do
+				local SortedThemes = {}
 				for Index, Value in Library.Theme do
-					ThemingSection:Label(Index):Colorpicker({
-						Flag = Index,
-						Default = Value,
-						Callback = function(Value)
-							Library.Theme[Index] = Value
-							Library:ChangeTheme(Index, Value)
+					table.insert(SortedThemes, { Index = Index, Value = Value, WordCount = #Index:gsub("%S+", "%0") })
+				end
+				
+				table.sort(SortedThemes, function(a, b)
+					return a.WordCount > b.WordCount
+				end)
+				
+				for _, Theme in SortedThemes do
+					ThemingSection:Label(Theme.Index):Colorpicker({
+						Flag = Theme.Index,
+						Default = Theme.Value,
+						Callback = function(NewValue)
+							Library.Theme[Theme.Index] = NewValue
+							Library:ChangeTheme(Theme.Index, NewValue)
 						end,
 					})
 				end
