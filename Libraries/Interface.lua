@@ -5031,7 +5031,7 @@ do
 				local ConfigSelected
 
 				local ConfigsSearchbox = ConfigsSection:Dropdown({
-					Name = "Profiles list",
+					Name = "Profiles List:",
 					Flag = "Profiles list",
 					Multi = false,
 					Items = {},
@@ -5041,7 +5041,7 @@ do
 				})
 
 				ConfigsSection:Textbox({
-					Name = "Config name",
+					Name = "Config Name",
 					Default = "",
 					Flag = "ConfigName",
 					Placeholder = "...",
@@ -5137,4 +5137,4 @@ do
 end
 
 getgenv().Library = Library
-return getgenv().Library
+return Library
