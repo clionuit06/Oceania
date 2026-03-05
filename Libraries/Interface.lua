@@ -1409,11 +1409,9 @@ do
 					RenderStepped = RunService.RenderStepped:Connect(function()
 						Items["ColorpickerWindow"].Instance.Position = UDim2New(
 							0,
-							Items["ColorpickerButton"].Instance.AbsolutePosition.X,
+							Library.MainFrame.AbsolutePosition.X + Library.MainFrame.AbsoluteSize.X + 8,
 							0,
-							Items["ColorpickerButton"].Instance.AbsolutePosition.Y
-								+ Items["ColorpickerButton"].Instance.AbsoluteSize.Y
-								+ 65
+							Library.MainFrame.AbsolutePosition.Y + 58
 						)
 					end)
 
@@ -3740,6 +3738,21 @@ do
 				})
 				Items["IndicatorInline"]:AddToTheme({ BackgroundColor3 = "Accent" })
 
+				Items["Check"] = Instances:Create("ImageLabel", {
+					Parent = Items["IndicatorOutline"].Instance,
+					Name = "\0",
+					Image = "rbxassetid://108016671469439",
+					ImageColor3 = FromRGB(0, 0, 0),
+					ScaleType = Enum.ScaleType.Fit,
+					ImageTransparency = 1,
+					BackgroundTransparency = 1,
+					AnchorPoint = Vector2New(0.5, 0.5),
+					Position = UDim2New(0.5, 0, 0.5, 0),
+					Size = UDim2New(0, 0, 0, 0),
+					BorderSizePixel = 0,
+					ZIndex = 2,
+				})
+
 				Items["Text"] = Instances:Create("TextLabel", {
 					Parent = Items["Toggle"].Instance,
 					Name = "\0",
@@ -3805,16 +3818,19 @@ do
 				Toggle.Value = Value
 				Library.Flags[Toggle.Flag] = Value
 
+				local TweenInfoCheck = TweenInfo.new(Library.Tween.Time, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 				if Toggle.Value then
 					Items["IndicatorInline"]:Tween(
 						TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-						{ BackgroundTransparency = 0, Size = UDim2New(1, -2, 1, -2) }
+						{ BackgroundTransparency = 0, Size = UDim2New(1, -2, 1, -2) } 
 					)
+					Items["Check"]:Tween(TweenInfoCheck, { ImageTransparency = 0, Size = UDim2New(1, 2, 1, 2) })
 				else
 					Items["IndicatorInline"]:Tween(
 						TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
 						{ BackgroundTransparency = 1, Size = UDim2New(0, -2, 0, -2) }
 					)
+					Items["Check"]:Tween(TweenInfoCheck, { ImageTransparency = 1, Size = UDim2New(0, 0, 0, 0) })
 				end
 
 				if Toggle.Callback then
@@ -5112,24 +5128,29 @@ do
 
 			local ThemingSection = SettingsPage:Section({ Name = "Theming", Side = 2 })
 			do
-				local SortedThemes = {}
-				for Index, Value in Library.Theme do
-					table.insert(SortedThemes, { Index = Index, Value = Value, WordCount = select(2, Index:gsub("%S+", "")) })
-				end
+				local ThemeOrder = {
+					"Window Outline",
+					"Background 2", 
+					"Background 1",
+					"Inactive Text",
+					"Element",
+					"Border",
+					"Accent",
+					"Inline",
+					"Text"
+				}
 
-				table.sort(SortedThemes, function(a, b)
-					return a.WordCount > b.WordCount
-				end)
-
-				for _, Theme in SortedThemes do
-					ThemingSection:Label(Theme.Index):Colorpicker({
-						Flag = Theme.Index,
-						Default = Theme.Value,
-						Callback = function(NewValue)
-							Library.Theme[Theme.Index] = NewValue
-							Library:ChangeTheme(Theme.Index, NewValue)
-						end,
-					})
+				for _, ThemeName in ThemeOrder do
+					if Library.Theme[ThemeName] then
+						ThemingSection:Label(ThemeName):Colorpicker({
+							Flag = ThemeName,
+							Default = Library.Theme[ThemeName],
+							Callback = function(NewValue)
+								Library.Theme[ThemeName] = NewValue
+								Library:ChangeTheme(ThemeName, NewValue)
+							end,
+						})
+					end
 				end
 			end
 		end
