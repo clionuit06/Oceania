@@ -766,8 +766,15 @@ do
 	end
 
 	Library.Round = function(self, Number, Float)
-		local Multiplier = 1 / (Float or 1)
-		return MathFloor(Number * Multiplier) / Multiplier
+		if type(Number) ~= "number" or Number ~= Number then
+			return 0
+		end
+		local Dec = type(Float) == "number" and Float or 0
+		if Dec <= 0 then
+			return MathFloor(Number + 0.5)
+		end
+		local Multiplier = 10 ^ Dec
+		return MathFloor(Number * Multiplier + 0.5) / Multiplier
 	end
 
 	Library.Thread = function(self, Function)
