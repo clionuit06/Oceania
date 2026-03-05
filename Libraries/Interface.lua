@@ -4,18 +4,21 @@ end
 
 local Library
 do
+	local Workspace = game:GetService("Workspace")
 	local UserInputService = game:GetService("UserInputService")
 	local Players = game:GetService("Players")
 	local HttpService = game:GetService("HttpService")
 	local RunService = game:GetService("RunService")
 	local CoreGui = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
 	local TweenService = game:GetService("TweenService")
+	local Lighting = game:GetService("Lighting")
 
 	gethui = gethui or function()
 		return CoreGui
 	end
 
 	local LocalPlayer = Players.LocalPlayer
+	local Camera = Workspace.CurrentCamera
 	local Mouse = LocalPlayer:GetMouse()
 
 	local FromRGB = Color3.fromRGB
@@ -29,11 +32,15 @@ do
 
 	local UDim2New = UDim2.new
 	local UDimNew = UDim.new
+	local UDim2FromScale = UDim2.fromScale
 	local UDim2FromOffset = UDim2.fromOffset
 	local Vector2New = Vector2.new
+	local Vector3New = Vector3.new
 
 	local MathClamp = math.clamp
 	local MathFloor = math.floor
+	local MathAbs = math.abs
+	local MathSin = math.sin
 
 	local TableInsert = table.insert
 	local TableFind = table.find
@@ -49,7 +56,6 @@ do
 	local StringLen = string.len
 
 	local InstanceNew = Instance.new
-
 
 	local RectNew = Rect.new
 
@@ -71,9 +77,9 @@ do
 		FadeSpeed = 0.2,
 
 		Folders = {
-			Directory = "uip100",
-			Configs = "uip100/Configs",
-			Assets = "uip100/Assets",
+			Directory = "Oceania",
+			Configs = "Oceania/Configs",
+			Assets = "Oceania/Assets",
 		},
 
 		-- Ignore below
@@ -96,11 +102,9 @@ do
 		Holder = nil,
 		NotifHolder = nil,
 		UnusedHolder = nil,
-		KeyList = nil,
 
 		Font = nil,
 		CopiedColor = nil,
-		Images = {},
 	}
 
 	Library.__index = Library
@@ -123,7 +127,7 @@ do
 		["Ampersand"] = "&",
 		["Quote"] = "'",
 		["LeftParenthesis"] = "(",
-		["RightParenthesis"] = ")",
+		["RightParenthesis"] = " )",
 		["Asterisk"] = "*",
 		["Plus"] = "+",
 		["Comma"] = ",",
@@ -162,12 +166,12 @@ do
 		["KeypadSeven"] = "Keypad7",
 		["KeypadEight"] = "Keypad8",
 		["KeypadNine"] = "Keypad9",
-		["KeypadPeriod"] = "Keypad.",
-		["KeypadDivide"] = "Keypad/",
-		["KeypadMultiply"] = "Keypad*",
+		["KeypadPeriod"] = "KeypadP",
+		["KeypadDivide"] = "KeypadD",
+		["KeypadMultiply"] = "KeypadM",
 		["KeypadMinus"] = "Keypad-",
 		["KeypadPlus"] = "Keypad+",
-		["KeypadEnter"] = "KeypadEnter",
+		["KeypadEnter"] = "KeypadE",
 		["KeypadEquals"] = "KeypadE",
 		["Insert"] = "Insert",
 		["Home"] = "Home",
@@ -190,7 +194,7 @@ do
             ["Inline"] = FromRGB(19, 25, 31),
             ["Element"] = FromRGB(32, 38, 48),
             ["Inactive Text"] = FromRGB(185, 185, 185),
-            ["Border"] = FromRGB(46, 52, 61),
+            ["Border"] =  FromRGB(46, 52, 61),
             ["Background 2"] = FromRGB(24, 28, 36)
         }
 	}
@@ -260,6 +264,13 @@ do
 				true
 			)
 
+			Library:Connect(NewTween.Tween.Completed, function()
+				if not Visibility then
+					task.wait()
+					Item[Property] = OldTransparency
+				end
+			end)
+
 			return NewTween
 		end
 
@@ -292,7 +303,9 @@ do
 				return
 			end
 
-			self:Pause()
+			self.Tween:Pause()
+			self.Tween:Destroy()
+			self.Tween = nil
 		end
 	end
 
@@ -329,7 +342,7 @@ do
 
 			local NewTween
 
-			for _, Value in Descendants do
+			for Index, Value in Descendants do
 				local TransparencyProperty = Tween:GetProperty(Value)
 
 				if not TransparencyProperty then
@@ -347,7 +360,7 @@ do
 		end
 
 		Instances.AddToTheme = function(self, Properties)
-			if not self.Instance or not Library then
+			if not self.Instance then
 				return
 			end
 
@@ -355,7 +368,7 @@ do
 		end
 
 		Instances.ChangeItemTheme = function(self, Properties)
-			if not self.Instance or not Library then
+			if not self.Instance then
 				return
 			end
 
@@ -363,7 +376,7 @@ do
 		end
 
 		Instances.Connect = function(self, Event, Callback, Name)
-			if not self.Instance or not Library then
+			if not self.Instance then
 				return
 			end
 
@@ -385,7 +398,7 @@ do
 		end
 
 		Instances.Tween = function(self, Info, Goal)
-			if not self.Instance or not Library then
+			if not self.Instance then
 				return
 			end
 
@@ -393,11 +406,11 @@ do
 		end
 
 		Instances.Disconnect = function(self, Name)
-			if not self.Instance or not Library then
+			if not self.Instance then
 				return
 			end
 
-			Library:Disconnect(Name)
+			return Library:Disconnect(Name)
 		end
 
 		Instances.Clean = function(self)
@@ -406,6 +419,7 @@ do
 			end
 
 			self.Instance:Destroy()
+			self = nil
 		end
 
 		Instances.MakeDraggable = function(self)
@@ -536,10 +550,11 @@ do
 
 				StartMouse = UserInputService:GetMouseLocation()
 
+				-- store offsets, not absolute screen pos
 				StartPosition = Vector2New(Gui.Position.X.Offset, Gui.Position.Y.Offset)
 				StartSize = Vector2New(Gui.Size.X.Offset, Gui.Size.Y.Offset)
 
-				for _, Value in Edges do
+				for Index, Value in Edges do
 					Value.Button.Instance.BackgroundTransparency = (Value.Side == Side) and 0 or 1
 				end
 			end
@@ -548,12 +563,12 @@ do
 				Resizing = false
 				CurrentSide = nil
 
-				for _, Value in Edges do
+				for Index, Value in Edges do
 					Value.Button.Instance.BackgroundTransparency = 1
 				end
 			end
 
-			for _, Value in Edges do
+			for Index, Value in Edges do
 				Value.Button:Connect("InputBegan", function(Input)
 					if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
 						BeginResizing(Value.Side)
@@ -670,7 +685,7 @@ do
 
 		CustomFont:New("Verdana", 400, "Regular", {
 			Id = "Verdana",
-			Url = "https://raw.githubusercontent.com/clionuit06/Oceania/main/Libraries/Verdana.ttf",
+			Url = "https://github.com/sametexe001/luas/raw/refs/heads/main/fonts/verdana.ttf",
 		})
 
 		Library.Font = CustomFont:Get("Verdana")
@@ -680,7 +695,7 @@ do
 		Parent = gethui(),
 		Name = "\0",
 		ZIndexBehavior = Enum.ZIndexBehavior.Global,
-		DisplayOrder = 10,
+		DisplayOrder = 2,
 		IgnoreGuiInset = true,
 		ResetOnSpawn = false,
 	})
@@ -693,24 +708,46 @@ do
 		ResetOnSpawn = false,
 	})
 
+	Library.NotifHolder = Instances:Create("Frame", {
+		Parent = Library.Holder.Instance,
+		Name = "\0",
+		BorderColor3 = FromRGB(0, 0, 0),
+		AnchorPoint = Vector2New(1, 0),
+		BackgroundTransparency = 1,
+		Position = UDim2New(1, 0, 0, 0),
+		Size = UDim2New(0, 0, 1, 0),
+		BorderSizePixel = 0,
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = FromRGB(255, 255, 255),
+	})
+
+	Instances:Create("UIListLayout", {
+		Parent = Library.NotifHolder.Instance,
+		Name = "\0",
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		Padding = UDimNew(0, 8),
+	})
+
+	Instances:Create("UIPadding", {
+		Parent = Library.NotifHolder.Instance,
+		Name = "\0",
+		PaddingTop = UDimNew(0, 15),
+		PaddingBottom = UDimNew(0, 15),
+		PaddingRight = UDimNew(0, 15),
+		PaddingLeft = UDimNew(0, 15),
+	})
+
 	Library.Unload = function(self)
-		if not Library then
-			return
+		for Index, Value in self.Connections do
+			Value.Connection:Disconnect()
 		end
 
-		for _, Value in self.Connections do
-			if Value and Value.Connection then
-				Value.Connection:Disconnect()
-			end
+		for Index, Value in self.Threads do
+			coroutine.close(Value)
 		end
 
-		for _, Value in self.Threads do
-			if Value then
-				coroutine.close(Value)
-			end
-		end
-
-		if self.Holder and self.Holder.Clean then
+		if self.Holder then
 			self.Holder:Clean()
 		end
 
@@ -729,31 +766,19 @@ do
 	end
 
 	Library.Round = function(self, Number, Float)
-		if type(Number) ~= "number" or Number ~= Number then
-			return 0
-		end
-		local Dec = type(Float) == "number" and Float or 0
-		if Dec <= 0 then
-			return MathFloor(Number + 0.5)
-		end
-		local Multiplier = 10 ^ Dec
-		return MathFloor(Number * Multiplier + 0.5) / Multiplier
+		local Multiplier = 1 / (Float or 1)
+		return MathFloor(Number * Multiplier) / Multiplier
 	end
 
-	Library.IsClipped = function(Object, Column)
-		local Parent = Column
+	Library.Thread = function(self, Function)
+		local NewThread = coroutine.create(Function)
 
-		local BoundryTop = Parent.AbsolutePosition
-		local BoundryBottom = BoundryTop + Parent.AbsoluteSize
+		coroutine.wrap(function()
+			coroutine.resume(NewThread)
+		end)()
 
-		local Top = Object.AbsolutePosition
-		local Bottom = Top + Object.AbsoluteSize
-
-		return Top.X < BoundryTop.X or Top.Y < BoundryTop.Y or Bottom.X > BoundryBottom.X or Bottom.Y > BoundryBottom.Y
-	end
-
-	Library.Thread = function(self, Function, ...)
-		return task.spawn(Function, ...)
+		TableInsert(self.Threads, NewThread)
+		return NewThread
 	end
 
 	Library.SafeCall = function(self, Function, ...)
@@ -772,24 +797,25 @@ do
 		Name = Name
 			or StringFormat("connection_number_%s_%s", self.UnnamedConnections + 1, HttpService:GenerateGUID(false))
 
-		self.UnnamedConnections = self.UnnamedConnections + 1
-
 		local NewConnection = {
 			Event = Event,
 			Callback = Callback,
 			Name = Name,
-			Connection = Event:Connect(Callback),
+			Connection = nil,
 		}
+
+		Library:Thread(function()
+			NewConnection.Connection = Event:Connect(Callback)
+		end)
 
 		TableInsert(self.Connections, NewConnection)
 		return NewConnection
 	end
 
 	Library.Disconnect = function(self, Name)
-		for Index, Connection in self.Connections do
+		for _, Connection in self.Connections do
 			if Connection.Name == Name then
 				Connection.Connection:Disconnect()
-				TableRemove(self.Connections, Index)
 				break
 			end
 		end
@@ -811,7 +837,6 @@ do
 
 	Library.NextFlag = function(self)
 		local FlagNumber = self.UnnamedFlags + 1
-		self.UnnamedFlags = self.UnnamedFlags + 1
 		return StringFormat("flag_number_%s_%s", FlagNumber, HttpService:GenerateGUID(false))
 	end
 
@@ -843,10 +868,7 @@ do
 				if type(Value) == "table" and Value.Key then
 					Config[Index] = { Key = tostring(Value.Key), Mode = Value.Mode, Toggled = Value.Toggled }
 				elseif type(Value) == "table" and Value.Color then
-					Config[Index] = {
-						Color = "#" .. (Value.HexValue or "ffffff"),
-						Alpha = Value.Alpha or 0,
-					}
+					Config[Index] = { Color = "#" .. Value.HexValue, Alpha = Value.Alpha }
 				else
 					Config[Index] = Value
 				end
@@ -857,11 +879,7 @@ do
 	end
 
 	Library.LoadConfig = function(self, Config)
-		local Success, Decoded = pcall(HttpService.JSONDecode, HttpService, Config)
-
-		if not Success then
-			return
-		end
+		local Decoded = HttpService:JSONDecode(Config)
 
 		local Success, Result = Library:SafeCall(function()
 			for Index, Value in Decoded do
@@ -997,7 +1015,7 @@ do
 					Parent = Items["ColorpickerButton"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -1052,7 +1070,7 @@ do
 					Parent = Items["ColorpickerWindow"].Instance,
 					Name = "\0",
 					Color = FromRGB(94, 213, 213),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 				}):AddToTheme({ Color = "Accent" })
 
 				Items["Alpha"] = Instances:Create("TextButton", {
@@ -1111,7 +1129,7 @@ do
 					Parent = Items["AlphaDragger"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -1166,7 +1184,7 @@ do
 					Parent = Items["Hue"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -1174,7 +1192,7 @@ do
 					Parent = Items["Hue"].Instance,
 					Name = "\0",
 					BorderColor3 = FromRGB(0, 0, 0),
-					BackgroundTransparency = 0,
+					BackgroundTransparency = -0.009999999776482582,
 					Position = UDim2New(0, 0, 0, 8),
 					Size = UDim2New(1, 0, 0, 2),
 					ZIndex = 3,
@@ -1186,7 +1204,7 @@ do
 					Parent = Items["HueDragger"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -1210,7 +1228,7 @@ do
 					Parent = Items["Palette"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -1262,7 +1280,7 @@ do
 					Parent = Items["PaletteDragger"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -1288,7 +1306,7 @@ do
 					Parent = Items["HexInput"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -1308,7 +1326,7 @@ do
 					Parent = Items["ColorpickerWindow2"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -1391,13 +1409,15 @@ do
 					RenderStepped = RunService.RenderStepped:Connect(function()
 						Items["ColorpickerWindow"].Instance.Position = UDim2New(
 							0,
-							Library.MainFrame.AbsolutePosition.X + Library.MainFrame.AbsoluteSize.X + 8,
+							Items["ColorpickerButton"].Instance.AbsolutePosition.X,
 							0,
-							Library.MainFrame.AbsolutePosition.Y + 58
+							Items["ColorpickerButton"].Instance.AbsolutePosition.Y
+								+ Items["ColorpickerButton"].Instance.AbsoluteSize.Y
+								+ 65
 						)
 					end)
 
-					for _, Value in Library.OpenFrames do
+					for Index, Value in Library.OpenFrames do
 						if Value ~= Colorpicker then
 							Value:SetOpen(false)
 						end
@@ -1420,7 +1440,7 @@ do
 
 				local NewTween
 
-				for _, Value in Descendants do
+				for Index, Value in Descendants do
 					local TransparencyProperty = Tween:GetProperty(Value)
 
 					if not TransparencyProperty then
@@ -1484,17 +1504,22 @@ do
 					return
 				end
 
+				local PaletteSize = Items["Palette"].Instance.AbsoluteSize
+				if PaletteSize.X == 0 or PaletteSize.Y == 0 then
+					return
+				end
+
 				local ValueX = MathClamp(
 					1
 						- (Input.Position.X - Items["Palette"].Instance.AbsolutePosition.X)
-							/ Items["Palette"].Instance.AbsoluteSize.X,
+							/ PaletteSize.X,
 					0,
 					1
 				)
 				local ValueY = MathClamp(
 					1
 						- (Input.Position.Y - Items["Palette"].Instance.AbsolutePosition.Y)
-							/ Items["Palette"].Instance.AbsoluteSize.Y,
+							/ PaletteSize.Y,
 					0,
 					1
 				)
@@ -1504,13 +1529,13 @@ do
 
 				local SlideX = MathClamp(
 					(Input.Position.X - Items["Palette"].Instance.AbsolutePosition.X)
-						/ Items["Palette"].Instance.AbsoluteSize.X,
+						/ PaletteSize.X,
 					0,
 					0.99
 				)
 				local SlideY = MathClamp(
 					(Input.Position.Y - Items["Palette"].Instance.AbsolutePosition.Y)
-						/ Items["Palette"].Instance.AbsoluteSize.Y,
+						/ PaletteSize.Y,
 					0,
 					0.99
 				)
@@ -1527,8 +1552,13 @@ do
 					return
 				end
 
+				local HueSize = Items["Hue"].Instance.AbsoluteSize
+				if HueSize.Y == 0 then
+					return
+				end
+
 				local ValueY = MathClamp(
-					(Input.Position.Y - Items["Hue"].Instance.AbsolutePosition.Y) / Items["Hue"].Instance.AbsoluteSize.Y,
+					(Input.Position.Y - Items["Hue"].Instance.AbsolutePosition.Y) / HueSize.Y,
 					0,
 					1
 				)
@@ -1536,7 +1566,7 @@ do
 				Colorpicker.Hue = ValueY
 
 				local SlideY = MathClamp(
-					(Input.Position.Y - Items["Hue"].Instance.AbsolutePosition.Y) / Items["Hue"].Instance.AbsoluteSize.Y,
+					(Input.Position.Y - Items["Hue"].Instance.AbsolutePosition.Y) / HueSize.Y,
 					0,
 					0.99
 				)
@@ -1553,9 +1583,14 @@ do
 					return
 				end
 
+				local AlphaSize = Items["Alpha"].Instance.AbsoluteSize
+				if AlphaSize.X == 0 then
+					return
+				end
+
 				local ValueX = MathClamp(
 					(Input.Position.X - Items["Alpha"].Instance.AbsolutePosition.X)
-						/ Items["Alpha"].Instance.AbsoluteSize.X,
+						/ AlphaSize.X,
 					0,
 					1
 				)
@@ -1564,7 +1599,7 @@ do
 
 				local SlideX = MathClamp(
 					(Input.Position.X - Items["Alpha"].Instance.AbsolutePosition.X)
-						/ Items["Alpha"].Instance.AbsoluteSize.X,
+						/ AlphaSize.X,
 					0,
 					0.99
 				)
@@ -1639,8 +1674,8 @@ do
 					SlidingPalette = true
 					Colorpicker:SlidePalette(Input)
 
-					if PaletteChanged then 
-						return 
+					if PaletteChanged then
+						return
 					end
 
 					PaletteChanged = Input.Changed:Connect(function()
@@ -1661,8 +1696,8 @@ do
 					SlidingHue = true
 					Colorpicker:SlideHue(Input)
 
-					if HueChanged then 
-						return 
+					if HueChanged then
+						return
 					end
 
 					HueChanged = Input.Changed:Connect(function()
@@ -1683,7 +1718,7 @@ do
 					SlidingAlpha = true
 					Colorpicker:SlideAlpha(Input)
 
-					if AlphaChanged then 
+					if AlphaChanged then
 						return
 					end
 
@@ -1699,12 +1734,34 @@ do
 			end)
 
 			Items["HexInput"]:Connect("FocusLost", function()
-				Colorpicker:Set(tostring(Items["HexInput"].Instance.Text), Colorpicker.Alpha)
+				local text = tostring(Items["HexInput"].Instance.Text)
+				-- Validate input length and format
+				if #text > 7 then -- #RRGGBB is 7 chars
+					text = text:sub(1, 7)
+					Items["HexInput"].Instance.Text = text
+				end
+				Colorpicker:Set(text, Colorpicker.Alpha)
 			end)
+
+			local CompareVectors = function(PointA, PointB)
+				return (PointA.X < PointB.X) or (PointA.Y < PointB.Y)
+			end
+
+			local IsClipped = function(Object, Column)
+				local Parent = Column
+
+				local BoundryTop = Parent.AbsolutePosition
+				local BoundryBottom = BoundryTop + Parent.AbsoluteSize
+
+				local Top = Object.AbsolutePosition
+				local Bottom = Top + Object.AbsoluteSize
+
+				return CompareVectors(Top, BoundryTop) or CompareVectors(BoundryBottom, Bottom)
+			end
 
 			Items["ColorpickerButton"]:Connect("Changed", function(Property)
 				if Property == "AbsolutePosition" and Colorpicker.IsOpen then
-					Colorpicker.IsOpen = not Library:IsClipped(
+					Colorpicker.IsOpen = not IsClipped(
 						Items["ColorpickerWindow"].Instance,
 						Data.Section.Items["Section"].Instance.Parent
 					)
@@ -1810,7 +1867,7 @@ do
 					Parent = Items["KeyButton"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -1858,7 +1915,7 @@ do
 					Parent = Items["Toggle"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				})
 				Items["ToggleStroke"]:AddToTheme({ Color = "Border" })
@@ -1927,7 +1984,7 @@ do
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 					Transparency = 1,
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 				})
 				Items["HoldStroke"]:AddToTheme({ Color = "Border" })
 
@@ -1996,7 +2053,7 @@ do
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 					Transparency = 1,
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 				})
 				Items["AlwaysOnStroke"]:AddToTheme({ Color = "Border" })
 
@@ -2018,7 +2075,7 @@ do
 					FontFace = Library.Font,
 					TextColor3 = FromRGB(255, 255, 255),
 					TextTransparency = 0.4000000059604645,
-					Text = "Always",
+					Text = "Always On",
 					AutomaticSize = Enum.AutomaticSize.X,
 					Size = UDim2New(0, 0, 0, 15),
 					AnchorPoint = Vector2New(0, 0.5),
@@ -2054,7 +2111,7 @@ do
 			local Modes = {
 				["Toggle"] = { Items["Toggle"], Items["ToggleText"], Items["ToggleStroke"], Items["ToggleLiner"] },
 				["Hold"] = { Items["Hold"], Items["HoldText"], Items["HoldStroke"], Items["HoldLiner"] },
-				["Always"] = {
+				["Always On"] = {
 					Items["AlwaysOn"],
 					Items["AlwaysOnText"],
 					Items["AlwaysOnStroke"],
@@ -2093,16 +2150,20 @@ do
 						)
 					end)
 
-					for _, Value in Library.OpenFrames do
-						if Value ~= Keybind then
-							Value:SetOpen(false)
+					if not Debounce then
+						for Index, Value in Library.OpenFrames do
+							if Value ~= Keybind then
+								Value:SetOpen(false)
+							end
 						end
-					end
 
-					Library.OpenFrames[Keybind] = Keybind
+						Library.OpenFrames[Keybind] = Keybind
+					end
 				else
-					if Library.OpenFrames[Keybind] then
-						Library.OpenFrames[Keybind] = nil
+					if not Debounce then
+						if Library.OpenFrames[Keybind] then
+							Library.OpenFrames[Keybind] = nil
+						end
 					end
 
 					if RenderStepped then
@@ -2182,6 +2243,8 @@ do
 							and StringGSub(StringGSub(KeyString, "KeyCode.", ""), "UserInputType.", "")
 						or "None"
 
+					TextToDisplay = StringGSub(StringGSub(KeyString, "KeyCode.", ""), "UserInputType.", "")
+
 					Keybind.Value = TextToDisplay
 					Items["KeyButton"].Instance.Text = TextToDisplay
 
@@ -2260,10 +2323,26 @@ do
 				Update()
 			end
 
+			local CompareVectors = function(PointA, PointB)
+				return (PointA.X < PointB.X) or (PointA.Y < PointB.Y)
+			end
+
+			local IsClipped = function(Object, Column)
+				local Parent = Column
+
+				local BoundryTop = Parent.AbsolutePosition
+				local BoundryBottom = BoundryTop + Parent.AbsoluteSize
+
+				local Top = Object.AbsolutePosition
+				local Bottom = Top + Object.AbsoluteSize
+
+				return CompareVectors(Top, BoundryTop) or CompareVectors(BoundryBottom, Bottom)
+			end
+
 			Items["KeyButton"]:Connect("Changed", function(Property)
 				if Property == "AbsolutePosition" and Keybind.IsOpen then
 					Keybind.IsOpen =
-						not Library:IsClipped(Items["KeybindWindow"].Instance, Data.Section.Items["Section"].Instance.Parent)
+						not IsClipped(Items["KeybindWindow"].Instance, Data.Section.Items["Section"].Instance.Parent)
 					Items["KeybindWindow"].Instance.Visible = Keybind.IsOpen
 				end
 			end)
@@ -2287,7 +2366,7 @@ do
 						Items["KeyButton"].Instance.Text = Count == 1 and "."
 							or Count == 2 and ".."
 							or Count == 3 and "..."
-						Count = Count + 1
+						Count += 1
 						task.wait(0.4)
 					end
 				end)
@@ -2377,7 +2456,7 @@ do
 
 			Items["AlwaysOn"]:Connect("MouseButton1Down", function()
 				Keybind.Mode = "Always"
-				Keybind:SetMode("Always")
+				Keybind:SetMode("Always On")
 			end)
 
 			if Data.Default then
@@ -2390,6 +2469,8 @@ do
 
 			return Keybind, Items
 		end
+
+
 
 		Library.ArmorViewer = function(self)
 			local Viewer = {
@@ -2485,7 +2566,7 @@ do
 					Parent = Items["Holder"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -2497,15 +2578,15 @@ do
 					BorderSizePixel = 0,
 					CanvasSize = UDim2New(0, 0, 0, 0),
 					ScrollBarImageColor3 = FromRGB(46, 52, 61),
-					MidImage = "rbxasset://textures/ui/Scroll/scroll-middle.png",
+					MidImage = "rbxassetid://93024691806056",
 					BorderColor3 = FromRGB(0, 0, 0),
 					ScrollBarThickness = 3,
 					Size = UDim2New(1, -4, 1, -8),
 					BackgroundTransparency = 1,
 					Position = UDim2New(0, 0, 0, 4),
 					ZIndex = 8,
-					BottomImage = "rbxasset://textures/ui/Scroll/scroll-bottom.png",
-					TopImage = "rbxasset://textures/ui/Scroll/scroll-top.png",
+					BottomImage = "rbxassetid://93024691806056",
+					TopImage = "rbxassetid://93024691806056",
 					BackgroundColor3 = FromRGB(255, 255, 255),
 				})
 				Items["RealHolder"]:AddToTheme({ ScrollBarImageColor3 = "Border" })
@@ -2546,7 +2627,7 @@ do
 					Parent = NewItem.Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -2574,7 +2655,7 @@ do
 			end
 
 			function Viewer:ClearAllItems()
-				for _, Value in Viewer.Items do
+				for Index, Value in Viewer.Items do
 					Value:Remove()
 				end
 			end
@@ -2592,6 +2673,95 @@ do
 			end
 
 			return Viewer
+		end
+
+		Library.Notification = function(self, Name, Duration)
+			local Items = {}
+			do
+				Items["Notification"] = Instances:Create("Frame", {
+					Parent = self.NotifHolder.Instance,
+					Name = "\0",
+					Size = UDim2New(0, 20, 0, 20),
+					BorderColor3 = FromRGB(0, 0, 0),
+					BorderSizePixel = 0,
+					AutomaticSize = Enum.AutomaticSize.XY,
+					BackgroundColor3 = FromRGB(24, 28, 36),
+				})
+				Items["Notification"]:AddToTheme({ BackgroundColor3 = "Inline" })
+
+				Instances:Create("UIPadding", {
+					Parent = Items["Notification"].Instance,
+					Name = "\0",
+					PaddingTop = UDimNew(0, 7),
+					PaddingBottom = UDimNew(0, 7),
+					PaddingRight = UDimNew(0, 7),
+					PaddingLeft = UDimNew(0, 7),
+				})
+
+				Items["Text"] = Instances:Create("TextLabel", {
+					Parent = Items["Notification"].Instance,
+					Name = "\0",
+					FontFace = Library.Font,
+					TextColor3 = FromRGB(255, 255, 255),
+					BorderColor3 = FromRGB(0, 0, 0),
+					Text = Name,
+					Size = UDim2New(0, 0, 0, 15),
+					BackgroundTransparency = 1,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					BorderSizePixel = 0,
+					AutomaticSize = Enum.AutomaticSize.XY,
+					TextSize = 14,
+					BackgroundColor3 = FromRGB(255, 255, 255),
+				})
+				Items["Text"]:AddToTheme({ TextColor3 = "Text" })
+
+				Instances:Create("UIStroke", {
+					Parent = Items["Notification"].Instance,
+					Name = "\0",
+					Color = FromRGB(46, 52, 61),
+					LineJoinMode = Enum.LineJoinMode.Round,
+					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+				}):AddToTheme({ Color = "Border" })
+			end
+
+			local Size = Items["Notification"].Instance.AbsoluteSize
+
+			for Index, Value in Items do
+				if Value.Instance:IsA("Frame") then
+					Value.Instance.BackgroundTransparency = 1
+				elseif Value.Instance:IsA("TextLabel") then
+					Value.Instance.TextTransparency = 1
+				end
+			end
+
+			Items["Notification"].Instance.AutomaticSize = Enum.AutomaticSize.None
+
+			Library:Thread(function()
+				for Index, Value in Items do
+					if Value.Instance:IsA("Frame") then
+						Value:Tween(nil, { BackgroundTransparency = 0 })
+					elseif Value.Instance:IsA("TextLabel") then
+						Value:Tween(nil, { TextTransparency = 0 })
+					end
+				end
+
+				Items["Notification"]:Tween(nil, { Size = UDim2New(0, Size.X, 0, Size.Y) })
+
+				task.delay(Duration + 0.1, function()
+					for Index, Value in Items do
+						if Value.Instance:IsA("Frame") then
+							Value:Tween(nil, { BackgroundTransparency = 1 })
+						elseif Value.Instance:IsA("TextLabel") then
+							Value:Tween(nil, { TextTransparency = 1 })
+						end
+					end
+
+					Items["Notification"]:Tween(nil, { Size = UDim2New(0, 0, 0, 0) })
+
+					task.wait(0.5)
+					Items["Notification"]:Clean()
+				end)
+			end)
 		end
 
 		Library.TargetHud = function(self)
@@ -2619,7 +2789,7 @@ do
 					Parent = Items["TargetHud"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -2696,7 +2866,7 @@ do
 					Parent = Items["Content"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -2788,7 +2958,7 @@ do
 					Parent = NewBarBackground.Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -2881,6 +3051,7 @@ do
 
 			local Window = {
 				Name = Data.Name or Data.name or "Bronx Dupe",
+				Logo = Data.Logo or Data.logo or "121644323941494",
 
 				Pages = {},
 				Items = {},
@@ -2895,22 +3066,21 @@ do
 					AnchorPoint = Vector2New(0.5, 0.5),
 					Position = UDim2New(0.5, 0, 0.5, 0),
 					BorderColor3 = FromRGB(0, 34, 37),
-					Size = not IsMobile and UDim2New(0, 550, 0, 542) or UDim2New(0, 325, 0, 400),
+					Size = not IsMobile and UDim2New(0, 520, 0, 480) or UDim2New(0, 300, 0, 360),
 					BorderSizePixel = 0,
 					BackgroundColor3 = FromRGB(17, 21, 27),
 				})
 				Items["MainFrame"]:AddToTheme({ BackgroundColor3 = "Background 1" })
 
+				Instances:Create("UICorner", {
+					Parent = Items["MainFrame"].Instance,
+					CornerRadius = UDim.new(0, 8),
+				})
+
 				Library.MainFrame = Items["MainFrame"].Instance
 
 				Items["MainFrame"]:MakeDraggable()
 				Items["MainFrame"]:MakeResizeable(Vector2New(550, 542), Vector2New(9999, 9999))
-
-				Instances:Create("UICorner", {
-					Parent = Items["MainFrame"].Instance,
-					Name = "\0",
-					CornerRadius = UDim.new(0, 8),
-				})
 
 				Items["UIStroke"] = Instances:Create("UIStroke", {
 					Parent = Items["MainFrame"].Instance,
@@ -2946,22 +3116,37 @@ do
 
 				Instances:Create("UICorner", {
 					Parent = Items["Inline"].Instance,
-					Name = "\0",
 					CornerRadius = UDim.new(0, 6),
 				})
+
+				Instances:Create("UIStroke", {
+					Parent = Items["Inline"].Instance,
+					Name = "\0",
+					Color = FromRGB(0, 34, 37),
+					LineJoinMode = Enum.LineJoinMode.Round,
+					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+				}):AddToTheme({ Color = "Window Outline" })
 
 				Items["Content"] = Instances:Create("Frame", {
 					Parent = Items["Inline"].Instance,
 					Name = "\0",
 					BorderColor3 = FromRGB(0, 0, 0),
 					BackgroundTransparency = 1,
-					Position = UDim2New(0, 7, 0, 10),
+					Position = UDim2New(0, 7, 0, 7),
 					ClipsDescendants = true,
 					Size = UDim2New(1, -14, 1, -15),
 					ZIndex = 2,
 					BorderSizePixel = 0,
 					BackgroundColor3 = FromRGB(255, 255, 255),
 				})
+
+				Instances:Create("UIStroke", {
+					Parent = Items["Content"].Instance,
+					Name = "\0",
+					Color = FromRGB(46, 52, 61),
+					LineJoinMode = Enum.LineJoinMode.Round,
+					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+				}):AddToTheme({ Color = "Border" })
 
 				Items["Pages"] = Instances:Create("Frame", {
 					Parent = Items["Content"].Instance,
@@ -3000,6 +3185,11 @@ do
 					SliceCenter = RectNew(Vector2New(21, 21), Vector2New(79, 79)),
 				})
 				Items["Glow"]:AddToTheme({ ImageColor3 = "Accent" })
+
+				Instances:Create("UICorner", {
+					Parent = Items["Glow"].Instance,
+					CornerRadius = UDim.new(0, 8),
+				})
 
 				Instances:Create("UIGradient", {
 					Parent = Items["Glow"].Instance,
@@ -3115,7 +3305,7 @@ do
 					Parent = Items["Inactive"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -3364,12 +3554,6 @@ do
 				})
 				Items["Section"]:AddToTheme({ BackgroundColor3 = "Inline" })
 
-				Instances:Create("UICorner", {
-					Parent = Items["Section"].Instance,
-					Name = "\0",
-					CornerRadius = UDim.new(0, 6),
-				})
-
 				Instances:Create("UIStroke", {
 					Parent = Items["Section"].Instance,
 					Name = "\0",
@@ -3377,6 +3561,11 @@ do
 					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
+
+				Instances:Create("UICorner", {
+					Parent = Items["Section"].Instance,
+					CornerRadius = UDimNew(0, 6),
+				})
 
 				Instances:Create("UIPadding", {
 					Parent = Items["Section"].Instance,
@@ -3424,8 +3613,7 @@ do
 
 				Instances:Create("UICorner", {
 					Parent = Items["Liner"].Instance,
-					Name = "\0",
-					CornerRadius = UDim.new(0, 4),
+					CornerRadius = UDim.new(0, 6),
 				})
 
 				Instances:Create("UIGradient", {
@@ -3530,9 +3718,14 @@ do
 					Parent = Items["IndicatorOutline"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
+
+				Instances:Create("UICorner", {
+					Parent = Items["IndicatorOutline"].Instance,
+					CornerRadius = UDimNew(0, 2),
+				})
 
 				Items["IndicatorInline"] = Instances:Create("Frame", {
 					Parent = Items["IndicatorOutline"].Instance,
@@ -3546,21 +3739,6 @@ do
 					BackgroundColor3 = FromRGB(94, 213, 213),
 				})
 				Items["IndicatorInline"]:AddToTheme({ BackgroundColor3 = "Accent" })
-
-				Items["Check"] = Instances:Create("ImageLabel", {
-					Parent = Items["IndicatorOutline"].Instance,
-					Name = "\0",
-					Image = "rbxassetid://108016671469439",
-					ImageColor3 = FromRGB(0, 0, 0),
-					ScaleType = Enum.ScaleType.Fit,
-					ImageTransparency = 1,
-					BackgroundTransparency = 1,
-					AnchorPoint = Vector2New(0.5, 0.5),
-					Position = UDim2New(0.5, 0, 0.5, 0),
-					Size = UDim2New(0, 0, 0, 0),
-					BorderSizePixel = 0,
-					ZIndex = 2,
-				})
 
 				Items["Text"] = Instances:Create("TextLabel", {
 					Parent = Items["Toggle"].Instance,
@@ -3627,19 +3805,16 @@ do
 				Toggle.Value = Value
 				Library.Flags[Toggle.Flag] = Value
 
-				local TweenInfoCheck = TweenInfo.new(Library.Tween.Time, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 				if Toggle.Value then
 					Items["IndicatorInline"]:Tween(
 						TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-						{ BackgroundTransparency = 0, Size = UDim2New(1, -2, 1, -2) } 
+						{ BackgroundTransparency = 0, Size = UDim2New(1, -2, 1, -2) }
 					)
-					Items["Check"]:Tween(TweenInfoCheck, { ImageTransparency = 0, Size = UDim2New(1, 2, 1, 2) })
 				else
 					Items["IndicatorInline"]:Tween(
 						TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
 						{ BackgroundTransparency = 1, Size = UDim2New(0, -2, 0, -2) }
 					)
-					Items["Check"]:Tween(TweenInfoCheck, { ImageTransparency = 1, Size = UDim2New(0, 0, 0, 0) })
 				end
 
 				if Toggle.Callback then
@@ -3775,25 +3950,10 @@ do
 			end
 
 			function Button:Press()
-				if not Library then
-					return
-				end
-
 				Items["Button"]:ChangeItemTheme({ BackgroundColor3 = "Accent" })
 				Items["Button"]:Tween(nil, { BackgroundColor3 = Library.Theme.Accent })
-
 				Library:SafeCall(Button.Callback)
-
-				if not Library then
-					return
-				end
-
 				task.wait(0.1)
-
-				if not Library then
-					return
-				end
-
 				Items["Button"]:ChangeItemTheme({ BackgroundColor3 = "Element" })
 				Items["Button"]:Tween(nil, { BackgroundColor3 = Library.Theme.Element })
 			end
@@ -3875,7 +4035,7 @@ do
 					Parent = Items["RealSlider"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -3929,23 +4089,14 @@ do
 			end
 
 			function Slider:Set(Value)
-				local Rounded = Library:Round(tonumber(Value) or 0, Slider.Decimals)
-				if Rounded ~= Rounded then
-					Rounded = Slider.Min
-				end
-				Slider.Value = MathClamp(Rounded, Slider.Min, Slider.Max)
+				Slider.Value = MathClamp(Library:Round(Value, Slider.Decimals), Slider.Min, Slider.Max)
 				Library.Flags[Slider.Flag] = Slider.Value
-
-				local Range = Slider.Max - Slider.Min
-				local Ratio = (Range > 0) and ((Slider.Value - Slider.Min) / Range) or 0
-				Ratio = MathClamp(Ratio, 0, 1)
 
 				Items["Accent"]:Tween(
 					TweenInfo.new(Library.Tween.Time, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-					{ Size = UDim2New(Ratio, -2, 1, -2) }
+					{ Size = UDim2New((Slider.Value - Slider.Min) / (Slider.Max - Slider.Min), -2, 1, -2) }
 				)
-				local DisplayValue = (type(Slider.Value) == "number") and Slider.Value or Slider.Min
-				Items["Value"].Instance.Text = StringFormat("%s%s", DisplayValue, Slider.Suffix or "")
+				Items["Value"].Instance.Text = StringFormat("%s%s", Slider.Value, Slider.Suffix)
 
 				if Slider.Value <= Slider.Min then
 					Items["Accent"].Instance.Visible = false
@@ -3960,17 +4111,6 @@ do
 
 			local InputChanged
 
-			local function GetSliderRatioFromInput(Input)
-				local RealSlider = Items["RealSlider"].Instance
-				local AbsPos = RealSlider.AbsolutePosition
-				local AbsSize = RealSlider.AbsoluteSize
-				if AbsSize.X <= 0 then
-					return 0.5
-				end
-				local SizeX = (Input.Position.X - AbsPos.X) / AbsSize.X
-				return MathClamp(SizeX, 0, 1)
-			end
-
 			Items["RealSlider"]:Connect("InputBegan", function(Input)
 				if
 					Input.UserInputType == Enum.UserInputType.MouseButton1
@@ -3978,18 +4118,18 @@ do
 				then
 					Slider.Sliding = true
 
-					local SizeX = GetSliderRatioFromInput(Input)
+					local SizeX = (Input.Position.X - Items["RealSlider"].Instance.AbsolutePosition.X)
+						/ Items["RealSlider"].Instance.AbsoluteSize.X
 					local Value = ((Slider.Max - Slider.Min) * SizeX) + Slider.Min
+
 					Slider:Set(Value)
 
-					if InputChanged then
-						InputChanged:Disconnect()
-						InputChanged = nil
-					end
+					if InputChanged then return end
 
-					InputChanged = Input.Changed:Connect(function(Prop)
+					InputChanged = Input.Changed:Connect(function()
 						if Input.UserInputState == Enum.UserInputState.End then
 							Slider.Sliding = false
+
 							if InputChanged then
 								InputChanged:Disconnect()
 								InputChanged = nil
@@ -3999,24 +4139,13 @@ do
 				end
 			end)
 
-			Library:Connect(UserInputService.InputEnded, function(Input)
-				if
-					(Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch)
-					and Slider.Sliding
-				then
-					Slider.Sliding = false
-					if InputChanged then
-						InputChanged:Disconnect()
-						InputChanged = nil
-					end
-				end
-			end)
-
 			Library:Connect(UserInputService.InputChanged, function(Input)
 				if Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch then
 					if Slider.Sliding then
-						local SizeX = GetSliderRatioFromInput(Input)
+						local SizeX = (Input.Position.X - Items["RealSlider"].Instance.AbsolutePosition.X)
+							/ Items["RealSlider"].Instance.AbsoluteSize.X
 						local Value = ((Slider.Max - Slider.Min) * SizeX) + Slider.Min
+
 						Slider:Set(Value)
 					end
 				end
@@ -4104,7 +4233,7 @@ do
 					Parent = Items["RealDropdown"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -4147,7 +4276,7 @@ do
 					Parent = Items["OptionHolder"].Instance,
 					Name = "\0",
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 				}):AddToTheme({ Color = "Border" })
 
@@ -4179,14 +4308,14 @@ do
 					BorderSizePixel = 0,
 					CanvasSize = UDim2New(0, 0, 0, 0),
 					ScrollBarImageColor3 = FromRGB(46, 52, 61),
-					MidImage = "rbxasset://textures/ui/Scroll/scroll-middle.png",
+					MidImage = "rbxassetid://93024691806056",
 					BorderColor3 = FromRGB(0, 0, 0),
 					ScrollBarThickness = 4,
-					Size = UDim2New(1, -4, 1, -8),
+					Size = UDim2New(1, -4, 1, -26),
 					BackgroundTransparency = 1,
 					Position = UDim2New(0, 0, 0, 22),
-					BottomImage = "rbxasset://textures/ui/Scroll/scroll-bottom.png",
-					TopImage = "rbxasset://textures/ui/Scroll/scroll-top.png",
+					BottomImage = "rbxassetid://93024691806056",
+					TopImage = "rbxassetid://93024691806056",
 					BackgroundColor3 = FromRGB(255, 255, 255),
 				})
 				Items["Holder"]:AddToTheme({ ScrollBarImageColor3 = "Border" })
@@ -4272,10 +4401,26 @@ do
 				end
 			end
 
+			local CompareVectors = function(PointA, PointB)
+				return (PointA.X < PointB.X) or (PointA.Y < PointB.Y)
+			end
+
+			local IsClipped = function(Object, Column)
+				local Parent = Column
+
+				local BoundryTop = Parent.AbsolutePosition
+				local BoundryBottom = BoundryTop + Parent.AbsoluteSize
+
+				local Top = Object.AbsolutePosition
+				local Bottom = Top + Object.AbsoluteSize
+
+				return CompareVectors(Top, BoundryTop) or CompareVectors(BoundryBottom, Bottom)
+			end
+
 			Items["RealDropdown"]:Connect("Changed", function(Property)
 				if Property == "AbsolutePosition" and Dropdown.IsOpen then
 					Dropdown.IsOpen =
-						not Library:IsClipped(Items["OptionHolder"].Instance, Dropdown.Section.Items["Section"].Instance.Parent)
+						not IsClipped(Items["OptionHolder"].Instance, Dropdown.Section.Items["Section"].Instance.Parent)
 					Items["OptionHolder"].Instance.Visible = Dropdown.IsOpen
 				end
 			end)
@@ -4352,7 +4497,7 @@ do
 					end
 				end
 
-				NewTween.Tween.Completed:Once(function()
+				Library:Connect(NewTween.Tween.Completed, function()
 					Debounce = false
 					Items["OptionHolder"].Instance.Visible = Dropdown.IsOpen
 					task.wait(0.2)
@@ -4394,7 +4539,7 @@ do
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 					Transparency = 1,
 					Color = FromRGB(46, 52, 61),
-					LineJoinMode = Enum.LineJoinMode.Miter,
+					LineJoinMode = Enum.LineJoinMode.Round,
 				})
 				OptionStroke:AddToTheme({ Color = "Border" })
 
@@ -4549,31 +4694,33 @@ do
 				end
 			end)
 
-			local SearchConnection
+			local SearchStepped
 
 			Items["Search"]:Connect("Focused", function()
-				SearchConnection = Items["Search"].Instance:GetPropertyChangedSignal("Text"):Connect(function()
-					local SearchText = StringLower(Items["Search"].Instance.Text)
-					local IsEmpty = SearchText == ""
-
-					for _, Value in Dropdown.Options do
-						if IsEmpty then
-							Value.Button.Instance.Visible = true
-						else
-							if StringFind(StringLower(Value.Name), Library:EscapePattern(SearchText)) then
+				SearchStepped = RunService.RenderStepped:Connect(function()
+					for Index, Value in Dropdown.Options do
+						if Items["Search"].Instance.Text ~= "" then
+							if
+								StringFind(
+									StringLower(Value.Name),
+									Library:EscapePattern(StringLower(Items["Search"].Instance.Text))
+								)
+							then
 								Value.Button.Instance.Visible = true
 							else
 								Value.Button.Instance.Visible = false
 							end
+						else
+							Value.Button.Instance.Visible = true
 						end
 					end
 				end)
 			end)
 
 			Items["Search"]:Connect("FocusLost", function()
-				if SearchConnection then
-					SearchConnection:Disconnect()
-					SearchConnection = nil
+				if SearchStepped then
+					SearchStepped:Disconnect()
+					SearchStepped = nil
 				end
 			end)
 
@@ -4888,17 +5035,16 @@ do
 					Flag = "Profiles list",
 					Multi = false,
 					Items = {},
-					MaxSize = 220,
 					Callback = function(Value)
 						ConfigSelected = Value
 					end,
 				})
 
 				ConfigsSection:Textbox({
-					Name = "",
+					Name = "Config name",
 					Default = "",
 					Flag = "ConfigName",
-					Placeholder = "Configuration Name...",
+					Placeholder = "...",
 					Callback = function(Value)
 						ConfigName = Value
 					end,
@@ -4911,7 +5057,7 @@ do
 							if not isfile(Library.Folders.Configs .. "/" .. ConfigName .. ".json") then
 								writefile(Library.Folders.Configs .. "/" .. ConfigName .. ".json", Library:GetConfig())
 								Library:RefreshConfigsList(ConfigsSearchbox)
-								print("Created config " .. ConfigName .. ".json")
+								Library:Notification("Created config " .. ConfigName .. ".json", 5)
 							end
 						end
 					end,
@@ -4923,7 +5069,7 @@ do
 						if ConfigSelected ~= nil then
 							delfile(Library.Folders.Configs .. "/" .. ConfigSelected .. ".json")
 							Library:RefreshConfigsList(ConfigsSearchbox)
-							print("Deleted config " .. ConfigSelected .. ".json")
+							Library:Notification("Deleted config " .. ConfigSelected .. ".json", 5, FromRGB(255, 0, 0))
 						end
 					end,
 				})
@@ -4936,9 +5082,9 @@ do
 								readfile(Library.Folders.Configs .. "/" .. ConfigSelected .. ".json")
 							)
 							if Success then
-								print("Loaded config " .. ConfigSelected .. ".json")
+								Library:Notification("Loaded config " .. ConfigSelected .. ".json", 5)
 							else
-								print("Failed to load config " .. ConfigSelected .. ".json")
+								Library:Notification("Failed to load config " .. ConfigSelected .. ".json", 5)
 							end
 						end
 					end,
@@ -4949,7 +5095,7 @@ do
 					Callback = function()
 						if ConfigSelected ~= nil then
 							writefile(Library.Folders.Configs .. "/" .. ConfigSelected .. ".json", Library:GetConfig())
-							print("Saved config " .. ConfigSelected .. ".json")
+							Library:Notification("Saved config " .. ConfigSelected .. ".json", 5)
 						end
 					end,
 				})
@@ -4968,13 +5114,13 @@ do
 			do
 				local SortedThemes = {}
 				for Index, Value in Library.Theme do
-					table.insert(SortedThemes, { Index = Index, Value = Value, WordCount = #Index:gsub("%S+", "%0") })
+					table.insert(SortedThemes, { Index = Index, Value = Value, WordCount = select(2, Index:gsub("%S+", "")) })
 				end
-				
+
 				table.sort(SortedThemes, function(a, b)
 					return a.WordCount > b.WordCount
 				end)
-				
+
 				for _, Theme in SortedThemes do
 					ThemingSection:Label(Theme.Index):Colorpicker({
 						Flag = Theme.Index,
@@ -4991,4 +5137,4 @@ do
 end
 
 getgenv().Library = Library
-return getgenv().Library
+return Library
